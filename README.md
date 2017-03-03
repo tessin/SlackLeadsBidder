@@ -1,6 +1,6 @@
 # Gamification of assigning leads using Slack
 
-**[Read full story]()**
+**[Read story behind this repo](https://medium.com/@nielsbosma/gamification-of-assigning-leads-using-slack-ffe87b3e5893)**
 
 ![](./docs/image1.png)
 
@@ -27,8 +27,7 @@
    * /balance POST to https://yourdomain/api/slack/balance
 * Get a Mandrill API key and setup in Web.config. 
 * In Mandrill setup an *Inbound Domain* and point this to https://yourdomain/api/mandrill/inbound.
-* In the database there's now a *Agents* table. For each agent add a row. 
-   * SlackId should be the user name in Slack
+* In the database there's now a *Agents* table. For each agent add a row. (SlackId should be the user name in Slack)
    
   ## Usage in Slack
   
@@ -49,10 +48,3 @@
    
    ### /autobid
    Get your current autobid. (private)
-   
-   
-  
-  
-
-
-
