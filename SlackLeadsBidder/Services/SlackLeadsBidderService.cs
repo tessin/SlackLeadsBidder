@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Mail;
 using System.Web;
 using System.Web.Mvc.Html;
+using Exceptionless;
 using ServiceStack.Text;
 using Slack.Webhooks;
 using SlackLeadsBidder.Config;
@@ -278,6 +279,8 @@ namespace SlackLeadsBidder.Services
 
                     agent.AutoBid = amount;
                     db.SaveChanges();
+
+                    agentClient.PostOk($"You autobid is set to {amount} for next auction.");
                 }
             }
         }
@@ -351,6 +354,22 @@ namespace SlackLeadsBidder.Services
         {
             using (var db = new SlackLeadsBidderContext())
             {
+                var oldTexts = db.Leads.OrderByDescending(e => e.Created).Select(e => e.Body).Take(10).ToList();
+                var sameText = oldTexts.FirstOrDefault(e => _SeenBefore(lead.Body, e));
+                if (sameText != null)
+                {
+                    /*
+                    ExceptionlessClient.Default.CreateLog(nameof(CreateLead), "Duplicate lead", "Info").AddObject(new
+                    {
+                        NewBody = lead.Body,
+                        FoundBody = sameText
+                    })
+                    .Submit();
+                    */
+                    ExceptionlessClient.Default.CreateLog(nameof(CreateLead), "Duplicate lead", "Info").AddObject(lead).Submit();
+                    return;
+                }
+
                 lead.Created = DateTime.UtcNow;
                 db.Leads.Add(lead);
                 db.SaveChanges();
@@ -394,6 +413,18 @@ namespace SlackLeadsBidder.Services
                     Text = $"Your auto bid is {agent.AutoBid}."
                 });
             }
+        }
+
+        private static bool _SeenBefore(string newText, string oldText)
+        {
+            if (!newText.StartsWith("<table") || !oldText.StartsWith("<table")) return false;
+
+            int idx0 = newText.IndexOf("</table>", StringComparison.Ordinal);
+            int idx1 = oldText.IndexOf("</table>", StringComparison.Ordinal);
+
+            if (idx0 == -1 || idx1 == -1) return false;
+
+            return newText.Substring(0,idx0).Equals(oldText.Substring(0,idx1));
         }
 
     }

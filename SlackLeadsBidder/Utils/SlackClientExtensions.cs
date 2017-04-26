@@ -18,7 +18,22 @@ namespace SlackLeadsBidder.Utils
                     new SlackAttachment()
                     {
                         Text = $"Failed:{message}",
-                        Color = "danger",
+                        Color = "danger"
+                    }
+                }
+            });
+        }
+
+        public static void PostOk(this SlackClient client, string message)
+        {
+            client.Post(new SlackMessage()
+            {
+                Attachments = new List<SlackAttachment>()
+                {
+                    new SlackAttachment()
+                    {
+                        Text = $"{message}",
+                        Color = "good"
                     }
                 }
             });

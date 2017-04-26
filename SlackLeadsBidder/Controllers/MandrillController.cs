@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Web;
 using System.Web.Http;
+using Exceptionless;
 using Newtonsoft.Json.Linq;
 using SlackLeadsBidder.Models;
 using SlackLeadsBidder.Services;
@@ -14,35 +16,43 @@ namespace SlackLeadsBidder.Controllers
 {
     public class MandrillController : ApiController
     {
+
+        private readonly object lockOnThis = new object();
+
         [HttpPost]
         public HttpResponseMessage Inbound(FormDataCollection formData)
         {
-            var jEvents = JArray.Parse(formData["mandrill_events"]);
-
-            foreach (dynamic jEvent in jEvents)
+            lock (lockOnThis)
             {
-                if (jEvent.@event == "inbound")
+                var jEvents = JArray.Parse(formData["mandrill_events"]);
+
+                foreach (dynamic jEvent in jEvents)
                 {
-                    try
+                    if (jEvent.@event == "inbound")
                     {
-                        var lead = new Lead
+                        try
                         {
-                            FromName = jEvent.msg.from_name,
-                            FromEmail = jEvent.msg.from_email,
-                            Subject = jEvent.msg.subject,
-                            Body = jEvent.msg.html
-                        };
+                            var lead = new Lead
+                            {
+                                FromName = jEvent.msg.from_name,
+                                FromEmail = jEvent.msg.from_email,
+                                Subject = jEvent.msg.subject,
+                                Body = jEvent.msg.html
+                            };
 
-                        SlackLeadsBidderService.CreateLead(lead);
-                    }
-                    catch (Exception)
-                    {
-                        //todo: Report to Exceptionless.
-                    }
+                            ExceptionlessClient.Default.CreateLog(nameof(Inbound), "Lead", "Info").AddObject(lead).Submit();
 
+                            SlackLeadsBidderService.CreateLead(lead);
+                        }
+                        catch (Exception ex)
+                        {
+                            ex.ToExceptionless().MarkAsCritical().Submit();
+                        }
+
+                    }
                 }
+                return new HttpResponseMessage(HttpStatusCode.OK);
             }
-            return new HttpResponseMessage(HttpStatusCode.OK);
         }
 
     }
